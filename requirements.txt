@@ -7,3 +7,4 @@ scikeras==0.13.0
 tensorflow==2.17.0
 prophet==1.1.5
 scikit-learn==1.4.2
+plotly==5.23.0
