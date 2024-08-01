@@ -79,7 +79,7 @@ def plot_and_evaluate(df, model, start_date, end_date):
 st.title('Wind Energy Power (y) Forecast')
 
 # Display image
-st.image('Wind_turbine.jpg', use_column_width=True)
+st.image('Wind_turbine.JPG', use_column_width=True)
 
 # Load the model
 model = load_model('lstm_model.h5')
