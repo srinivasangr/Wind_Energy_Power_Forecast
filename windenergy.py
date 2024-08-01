@@ -12,7 +12,7 @@ os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 
 # Function to load data
 def load_data():
-    df = pd.read_csv('c:/Users/91944/Downloads/UTD/Project/Wind power forecasting/Location1_final.csv', parse_dates=['ds'], index_col='ds')
+    df = pd.read_csv('Location1_final.csv', parse_dates=['ds'], index_col='ds')
     return df
 
 # Function to preprocess data
@@ -79,10 +79,10 @@ def plot_and_evaluate(df, model, start_date, end_date):
 st.title('Wind Energy Power (y) Forecast')
 
 # Display image
-st.image('c:/Users/91944/Downloads/UTD/Project/Wind power forecasting/Wind_turbine.jpg', use_column_width=True)
+st.image('Wind_turbine.jpg', use_column_width=True)
 
 # Load the model
-model = load_model('c:/Users/91944/Downloads/UTD/Project/Wind power forecasting/lstm_model.h5')
+model = load_model('lstm_model.h5')
 
 # Load and display the data
 df = load_data()
