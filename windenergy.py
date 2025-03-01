@@ -1,106 +1,131 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 import plotly.graph_objects as go
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
-from tensorflow.keras.models import load_model
+import pickle
 import os
-os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
-
-
-# Function to load data
-def load_data():
-    df = pd.read_csv('Location1_final.csv', parse_dates=['ds'], index_col='ds')
-    return df
-
-# Function to preprocess data
-def preprocess_data(df, seq_length):
-    scaler = MinMaxScaler(feature_range=(0, 1))
-    scaled_data = scaler.fit_transform(df)
-    
-    def create_sequences(data, seq_length):
-        xs, ys = [], []
-        for i in range(len(data) - seq_length):
-            x = data[i:i+seq_length, 1:]
-            y = data[i+seq_length, 0]
-            xs.append(x)
-            ys.append(y)
-        return np.array(xs), np.array(ys)
-    
-    X, y = create_sequences(scaled_data, seq_length)
-    return X, y, scaler
-
-# Function to plot results and display accuracy metrics
-def plot_and_evaluate(df, model, start_date, end_date):
-    # Filter data based on user input
-    df_lstm = df[['y', 'Wind_power_density', 'daily_ma_y', 'Windspeed_100m_lagged_1', 'Windspeed_100m_lagged_2', 
-                  'daily_ma_wind', 'windspeed_100m', 'Wind_shear', 'Wind_cos_100m', 'windgusts_10m', 'temperature_sum']]
-    
-    SEQ_LENGTH = 24
-    X, y, scaler = preprocess_data(df_lstm, SEQ_LENGTH)
-    
-    predictions = model.predict(X)
-    predictions_reshaped = np.zeros((predictions.shape[0], len(df_lstm.columns)))
-    predictions_reshaped[:, 0] = predictions.flatten()
-    predictions_original_scale = scaler.inverse_transform(predictions_reshaped)
-    predictions_power = predictions_original_scale[:, 0]
-    
-    # Create a DataFrame with predictions and datetime index
-    predictions_df = pd.DataFrame(predictions_power, index=df.index[SEQ_LENGTH:], columns=['Predicted_Power'])
-    
-    # Filter the data for the plot
-    actual_data = df.loc[start_date:end_date, 'y']
-    predicted_data = predictions_df.loc[start_date:end_date, 'Predicted_Power']
-    
-    # Create interactive plot
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=actual_data.index, y=actual_data, mode='lines', name='Actual',line=dict(color='blue' )))
-    fig.add_trace(go.Scatter(x=predicted_data.index, y=predicted_data, mode='lines', name='Predicted', line=dict(color='red')))
-    fig.update_layout(title='Actual vs Predicted Power',
-                      xaxis_title='Time',
-                      yaxis_title='Power',
-                      xaxis_rangeslider_visible=True)
-    
-    # Display plot in Streamlit
-    st.plotly_chart(fig)
-    
-    # Accuracy metrics
-    mse = mean_squared_error(actual_data, predicted_data)
-    mae = mean_absolute_error(actual_data, predicted_data)
-    r2 = r2_score(actual_data, predicted_data)
-    
-    st.write(f'Mean Squared Error (MSE): {mse}')
-    st.write(f'Mean Absolute Error (MAE): {mae}')
-    st.write(f'R-squared (R²): {r2}')
+from sklearn.linear_model import LinearRegression, Lasso, Ridge
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.tree import DecisionTreeRegressor
+from xgboost import XGBRegressor
+from catboost import CatBoostRegressor
+from sklearn.ensemble import AdaBoostRegressor
+import time
 
 # Streamlit interface
-st.title('Wind Energy Power (y) Forecast')
+st.title('Wind Energy Power Prediction and Forecast')
 
-# Display image
-st.image('Wind_turbine.JPG', use_column_width=True)
+# Display image (same as original)
+st.image('Wind_turbine.JPG', use_container_width=True)
 
-# Load the model
-model = load_model('lstm_model.h5')
+# 1. Power Prediction Section
+st.header('Wind Power Prediction Calculator')
+st.write('Enter the input features to predict wind power output.')
 
-# Load and display the data
-df = load_data()
-#st.write('Data:', df)
+# Define input features with limits and sliders
+features = {
+    'temperature_2m': {'type': 'slider', 'min': -32, 'max': 102, 'default': 45, 'label': 'Temperature (2m) (°C)'},
+    'relativehumidity_2m': {'type': 'slider', 'min': 0, 'max': 100, 'default': 70, 'label': 'Relative Humidity (2m) (%)'},
+    'dewpoint_2m': {'type': 'slider', 'min': -36, 'max': 78, 'default': 15, 'label': 'Dew Point (2m) (°C)'},
+    'windspeed_10m': {'type': 'number', 'min': 0, 'max': 20, 'default': 5, 'label': 'Wind Speed (10m) (m/s)'},
+    'windspeed_100m': {'type': 'number', 'min': 0, 'max': 30, 'default': 10, 'label': 'Wind Speed (100m) (m/s)'},
+    'winddirection_10m': {'type': 'number', 'min': 0, 'max': 360, 'default': 180, 'label': 'Wind Direction (10m) (degrees)'},
+    'winddirection_100m': {'type': 'number', 'min': 0, 'max': 360, 'default': 180, 'label': 'Wind Direction (100m) (degrees)'},
+    'windgusts_10m': {'type': 'number', 'min': 0, 'max': 30, 'default': 8, 'label': 'Wind Gusts (10m) (m/s)'}
+}
 
-# Input from the user
-min_date = pd.to_datetime('2017-04-02')
-max_date = pd.to_datetime('2021-12-31')
+user_inputs = {}
+for feature, config in features.items():
+    if config['type'] == 'slider':
+        user_inputs[feature] = st.slider(config['label'], min_value=config['min'], max_value=config['max'], value=config['default'])
+    else:
+        user_inputs[feature] = st.number_input(config['label'], min_value=config['min'], max_value=config['max'], value=config['default'])
 
-start_date = st.date_input('Select start date', value=pd.to_datetime('2021-01-01'), min_value=min_date, max_value=max_date)
-end_date = st.date_input('Select end date', value=pd.to_datetime('2021-12-31'), min_value=min_date, max_value=max_date)
+# Select prediction model (excluding Random Forest)
+model_options = ["Linear Regression", "Lasso", "Ridge", "K-Neighbors Regressor", "Decision Tree", 
+                 "XGBRegressor", "CatBoosting Regressor", "AdaBoost Regressor"]
+selected_model = st.selectbox('Select Prediction Model', model_options)
+
+# Load models
+@st.cache_resource
+def load_models():
+    """Load prediction models from artifacts folder (faster with resource caching)."""
+    models = {
+        "Linear Regression": pickle.load(open('artifacts/Linear_Regression_model.pkl', 'rb')),
+        "Lasso": pickle.load(open('artifacts/Lasso_model.pkl', 'rb')),
+        "Ridge": pickle.load(open('artifacts/Ridge_model.pkl', 'rb')),
+        "K-Neighbors Regressor": pickle.load(open('artifacts/K-Neighbors_Regressor_model.pkl', 'rb')),
+        "Decision Tree": pickle.load(open('artifacts/Decision_Tree_model.pkl', 'rb')),
+        "XGBRegressor": pickle.load(open('artifacts/XGBRegressor_model.pkl', 'rb')),
+        "CatBoosting Regressor": pickle.load(open('artifacts/CatBoosting_Regressor_model.pkl', 'rb')),
+        "AdaBoost Regressor": pickle.load(open('artifacts/AdaBoost_Regressor_model.pkl', 'rb'))
+    }
+    return models
+
+models = load_models()
+
+# Predict power
+if st.button('Predict Power'):
+    start_time = time.time()
+    input_df = pd.DataFrame([user_inputs])  # Use raw inputs directly
+    
+    # Predict using the selected model
+    prediction = models[selected_model].predict(input_df)[0]
+    st.write(f'Predicted Wind Power: {prediction:.2f} units')
+    end_time = time.time()
+    #st.write(f"Prediction time: {end_time - start_time:.2f} seconds")
+
+# 2. Power Forecasting Section (2017-2025)
+st.header('Wind Power Prediction based on Forecasted Features')
+st.write('Forecast wind power output using pre-forecasted input features from dataset')
+
+# Date range input for forecasting
+start_date = st.date_input('Start Date', value=pd.to_datetime('2017-01-02 00:00:00'))
+end_date = st.date_input('End Date', value=pd.to_datetime('2025-12-30 23:00:00'))
 
 if start_date > end_date:
     st.error('Error: End date must fall after start date.')
 
-# Plot and evaluate
-if st.button('Plot and Evaluate'):
+# Load combined forecast CSV
+@st.cache_resource
+def load_combined_forecast():
+    """Load combined forecast CSV with caching for performance."""
+    return pd.read_csv('artifacts/combined_forecast.csv', parse_dates=['Date'], index_col='Date')
+
+combined_forecast_df = load_combined_forecast()
+
+if st.button('Forecast Power'):
     if start_date <= end_date:
-        plot_and_evaluate(df, model, start_date, end_date)
-    else:
-        st.error('Error: End date must fall after start date.')
+        start_time = time.time()
+        
+        # Filter the combined forecast for the selected date range
+        forecast_dates = pd.date_range(start=start_date, end=end_date, freq='h')
+        forecast_input = combined_forecast_df.loc[forecast_dates, 
+                                                ['temperature_2m', 'relativehumidity_2m', 'dewpoint_2m', 
+                                                 'windspeed_10m', 'windspeed_100m', 'winddirection_10m', 
+                                                 'winddirection_100m', 'windgusts_10m']]
+        
+        # Ensure no missing values (fill with forward fill or interpolate if needed)
+        forecast_input = forecast_input.fillna(method='ffill').fillna(method='bfill')
+        
+        # Predict wind power using the selected model (raw data, no scaling)
+        power_forecast = models[selected_model].predict(forecast_input)
+        forecast_output = pd.DataFrame({
+            'Date': forecast_dates,
+            'Predicted_Power': power_forecast
+        })
+        
+        # Plot forecast
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=forecast_output['Date'], y=forecast_output['Predicted_Power'], 
+                                 mode='lines', name='Forecasted Power', line=dict(color='green')))
+        fig.update_layout(title='Wind Power Forecast (2017-2025)',
+                          xaxis_title='Date',
+                          yaxis_title='Power',
+                          xaxis_rangeslider_visible=True)
+        st.plotly_chart(fig)
+        
+
+        
+        end_time = time.time()
+        #st.write(f"Forecasting time: {end_time - start_time:.2f} seconds")
