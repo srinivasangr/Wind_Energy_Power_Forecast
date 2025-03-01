@@ -91,7 +91,6 @@ if start_date > end_date:
 def load_combined_forecast():
     """Load combined forecast CSV with caching for performance and ensure full date range."""
     df = pd.read_csv('artifacts/combined_forecast.csv', parse_dates=['Date'], index_col='Date')
-    st.write("Combined Forecast Index Sample:", df.index[:5])  # Debug: Show first 5 index values
     return df
 
 combined_forecast_df = load_combined_forecast()
@@ -102,8 +101,6 @@ if st.button('Forecast Power'):
         
         # Filter the combined forecast for the selected date range
         forecast_dates = pd.date_range(start=start_date, end=end_date, freq='h')
-        st.write("Forecast Dates Sample:", forecast_dates[:5])  # Debug: Show first 5 forecast dates
-        
         forecast_input = combined_forecast_df.loc[forecast_dates, 
                                                 ['temperature_2m', 'relativehumidity_2m', 'dewpoint_2m', 
                                                  'windspeed_10m', 'windspeed_100m', 'winddirection_10m', 
