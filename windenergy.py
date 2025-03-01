@@ -4,13 +4,13 @@ import numpy as np
 import plotly.graph_objects as go
 import pickle
 import os
+import time
 from sklearn.linear_model import LinearRegression, Lasso, Ridge
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.tree import DecisionTreeRegressor
 from xgboost import XGBRegressor
 from catboost import CatBoostRegressor
 from sklearn.ensemble import AdaBoostRegressor
-import time
 
 # Streamlit interface
 st.title('Wind Energy Power Prediction and Forecast')
@@ -19,7 +19,7 @@ st.title('Wind Energy Power Prediction and Forecast')
 st.image('Wind_turbine.JPG', use_container_width=True)
 
 # 1. Power Prediction Section
-st.header('Wind Power Prediction Calculator')
+st.header('Wind Power Prediction')
 st.write('Enter the input features to predict wind power output.')
 
 # Define input features with limits and sliders
@@ -73,11 +73,11 @@ if st.button('Predict Power'):
     prediction = models[selected_model].predict(input_df)[0]
     st.write(f'Predicted Wind Power: {prediction:.2f} units')
     end_time = time.time()
-    #st.write(f"Prediction time: {end_time - start_time:.2f} seconds")
+    st.write(f"Prediction time: {end_time - start_time:.2f} seconds")
 
 # 2. Power Forecasting Section (2017-2025)
-st.header('Wind Power Prediction based on Forecasted Features')
-st.write('Forecast wind power output using pre-forecasted input features from dataset')
+st.header('Wind Power Forecasting (2017-2025)')
+st.write('Forecast wind power output using pre-forecasted input features from combined_forecast.csv.')
 
 # Date range input for forecasting
 start_date = st.date_input('Start Date', value=pd.to_datetime('2017-01-02 00:00:00'))
@@ -89,8 +89,10 @@ if start_date > end_date:
 # Load combined forecast CSV
 @st.cache_resource
 def load_combined_forecast():
-    """Load combined forecast CSV with caching for performance."""
-    return pd.read_csv('artifacts/combined_forecast.csv', parse_dates=['Date'], index_col='Date')
+    """Load combined forecast CSV with caching for performance and ensure full date range."""
+    df = pd.read_csv('artifacts/combined_forecast.csv', parse_dates=['Date'], index_col='Date')
+    st.write("Combined Forecast Index Sample:", df.index[:5])  # Debug: Show first 5 index values
+    return df
 
 combined_forecast_df = load_combined_forecast()
 
@@ -100,6 +102,8 @@ if st.button('Forecast Power'):
         
         # Filter the combined forecast for the selected date range
         forecast_dates = pd.date_range(start=start_date, end=end_date, freq='h')
+        st.write("Forecast Dates Sample:", forecast_dates[:5])  # Debug: Show first 5 forecast dates
+        
         forecast_input = combined_forecast_df.loc[forecast_dates, 
                                                 ['temperature_2m', 'relativehumidity_2m', 'dewpoint_2m', 
                                                  'windspeed_10m', 'windspeed_100m', 'winddirection_10m', 
@@ -125,7 +129,5 @@ if st.button('Forecast Power'):
                           xaxis_rangeslider_visible=True)
         st.plotly_chart(fig)
         
-
-        
         end_time = time.time()
-        #st.write(f"Forecasting time: {end_time - start_time:.2f} seconds")
+        st.write(f"Forecasting time: {end_time - start_time:.2f} seconds")
