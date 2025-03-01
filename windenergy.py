@@ -73,7 +73,7 @@ if st.button('Predict Power'):
     prediction = models[selected_model].predict(input_df)[0]
     st.write(f'Predicted Wind Power: {prediction:.2f} units')
     end_time = time.time()
-    st.write(f"Prediction time: {end_time - start_time:.2f} seconds")
+    #st.write(f"Prediction time: {end_time - start_time:.2f} seconds")
 
 # 2. Power Forecasting Section (2017-2025)
 st.header('Wind Power Forecasting (2017-2025)')
@@ -127,4 +127,4 @@ if st.button('Forecast Power'):
         st.plotly_chart(fig)
         
         end_time = time.time()
-        st.write(f"Forecasting time: {end_time - start_time:.2f} seconds")
+        #st.write(f"Forecasting time: {end_time - start_time:.2f} seconds")
