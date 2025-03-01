@@ -118,7 +118,7 @@ if st.button('Forecast Power'):
         # Plot forecast
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=forecast_output['Date'], y=forecast_output['Predicted_Power'], 
-                                 mode='lines', name='Forecasted Power', line=dict(color='green')))
+                                 mode='lines', name='Forecasted Power', line=dict(color='red')))
         fig.update_layout(title='Wind Power Forecast (2017-2025)',
                           xaxis_title='Date',
                           yaxis_title='Power',
