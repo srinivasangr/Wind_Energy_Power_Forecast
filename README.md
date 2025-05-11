@@ -9,6 +9,7 @@ This project provides a web-based application for predicting and forecasting win
 - **Wind Power Forecasting **: Forecast wind power output for a user-specified date range  using pre-forecasted input features from forecasted dataset, plotted interactively with Plotly.
 - **Interactive Visualization**: Use Plotly to display interactive plots of predicted vs. forecasted wind power, with a range slider for easy navigation.
 - **Performance Metrics**: Display prediction and forecasting times for performance monitoring.
+- Streamlit link https://windenergypowerforecast-8hkutcfqkwzskfelragrjc.streamlit.app
 
 ## Installation
 
