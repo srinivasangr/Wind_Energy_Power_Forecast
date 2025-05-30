@@ -26,4 +26,6 @@ To run this project locally, follow these steps:
   git push origin main
 
 ```
-2. ![A descriptive alt-text](./Power_forecast.jpg)
+2.
+   ![Wind Power Forecast Example](./Power_forecast.jpg)
+
