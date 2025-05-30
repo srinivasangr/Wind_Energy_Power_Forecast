@@ -24,3 +24,6 @@ To run this project locally, follow these steps:
   git add README.md
   git commit -m "Update README.md to reflect current wind energy power prediction and forecast project"
   git push origin main
+
+```
+2. ![A descriptive alt-text](./Power_forecast.jpg)
