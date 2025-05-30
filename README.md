@@ -27,5 +27,6 @@ To run this project locally, follow these steps:
 
 ```
 2.
-   ![Wind Power Forecast Example](./Power_forecast.jpg)
+   ![Wind Power Forecast Example](./Power_forecast.JPG)
+
 
